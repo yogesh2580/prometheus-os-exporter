@@ -1,16 +1,16 @@
-FROM python:3.8-slim
+FROM python:3.11
 
 WORKDIR /usr/src/app
 
 COPY setup.py /usr/src/app/
 COPY README.md /usr/src/app/
-# Elasticsearch switched to a non open source license from version 7.11 onwards.
-# Limit to earlier versions to avoid license and compatibility issues.
-RUN pip install -e . 'elasticsearch<7.11'
 
-COPY prometheus_es_exporter/*.py /usr/src/app/prometheus_es_exporter/
-COPY LICENSE /usr/src/app/
+# COPY requirements.txt usr/src/app/requirements.txt
+# RUN pip install --no-cache-dir -r usr/src/app/requirements.txt
+
+RUN pip install -e .
+COPY prometheus_os_exporter/*.py /usr/src/app/prometheus_os_exporter/
 
 EXPOSE 9206
 
-ENTRYPOINT ["python", "-u", "/usr/local/bin/prometheus-es-exporter"]
+ENTRYPOINT ["python", "-u", "/usr/local/bin/prometheus_os_exporter"]

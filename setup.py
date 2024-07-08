@@ -7,9 +7,9 @@ with open(path.join(this_directory, 'README.md'), encoding='utf-8') as f:
     long_description = f.read()
 
 setup(
-    name='prometheus-es-exporter',
+    name='prometheus_os_exporter',
     version='0.14.1',
-    description='Elasticsearch query Prometheus exporter',
+    description='Opensearch query Prometheus exporter',
     long_description=long_description,
     long_description_content_type='text/markdown',
     url='https://github.com/braedon/prometheus-es-exporter',
@@ -27,20 +27,22 @@ setup(
         'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',
         'Programming Language :: Python :: 3.8',
+        'Programming Language :: Python :: 3.9',
+        'Programming Language :: Python :: 3.11'
     ],
-    keywords='monitoring prometheus exporter elasticsearch',
+    keywords='monitoring prometheus exporter opensearch',
     packages=find_packages(exclude=['tests']),
-    python_requires='>=3.5',
+    python_requires='>=3.11',
     install_requires=[
         'click',
         'click-config-file',
-        'elasticsearch',
+        'opensearch-py',
         'jog',
         'prometheus-client >= 0.6.0',
     ],
     entry_points={
         'console_scripts': [
-            'prometheus-es-exporter=prometheus_es_exporter:main',
+            'prometheus_os_exporter=prometheus_os_exporter:main',
         ],
     },
 )

@@ -9,8 +9,8 @@ import os
 import sched
 import time
 
-from elasticsearch import Elasticsearch
-from elasticsearch.exceptions import ConnectionTimeout
+from opensearchpy import OpenSearch
+from opensearchpy.exceptions import ConnectionTimeout
 from jog import JogFormatter
 from prometheus_client import start_http_server
 from prometheus_client.core import GaugeMetricFamily, REGISTRY
@@ -42,17 +42,17 @@ def collector_up_gauge(name_list, description, succeeded=True):
 
 
 class ClusterHealthCollector(object):
-    def __init__(self, es_client, timeout, level):
-        self.metric_name_list = ['es', 'cluster_health']
+    def __init__(self, os_client, timeout, level):
+        self.metric_name_list = ['os', 'cluster_health']
         self.description = 'Cluster Health'
 
-        self.es_client = es_client
+        self.os_client = os_client
         self.timeout = timeout
         self.level = level
 
     def collect(self):
         try:
-            response = self.es_client.cluster.health(level=self.level, request_timeout=self.timeout)
+            response = self.os_client.cluster.health(level=self.level, request_timeout=self.timeout)
 
             metrics = cluster_health_parser.parse_response(response, self.metric_name_list)
             metric_dict = group_metrics(metrics)
@@ -70,17 +70,17 @@ class ClusterHealthCollector(object):
 
 
 class NodesStatsCollector(object):
-    def __init__(self, es_client, timeout, metrics=None):
-        self.metric_name_list = ['es', 'nodes_stats']
+    def __init__(self, os_client, timeout, metrics=None):
+        self.metric_name_list = ['os', 'nodes_stats']
         self.description = 'Nodes Stats'
 
-        self.es_client = es_client
+        self.os_client = os_client
         self.timeout = timeout
         self.metrics = metrics
 
     def collect(self):
         try:
-            response = self.es_client.nodes.stats(metric=self.metrics, request_timeout=self.timeout)
+            response = self.os_client.nodes.stats(metric=self.metrics, request_timeout=self.timeout)
 
             metrics = nodes_stats_parser.parse_response(response, self.metric_name_list)
             metric_dict = group_metrics(metrics)
@@ -98,16 +98,16 @@ class NodesStatsCollector(object):
 
 
 class IndicesAliasesCollector(object):
-    def __init__(self, es_client, timeout):
-        self.metric_name_list = ['es', 'indices_aliases']
+    def __init__(self, os_client, timeout):
+        self.metric_name_list = ['os', 'indices_aliases']
         self.description = 'Indices Aliases'
 
-        self.es_client = es_client
+        self.os_client = os_client
         self.timeout = timeout
 
     def collect(self):
         try:
-            response = self.es_client.indices.get_alias(request_timeout=self.timeout)
+            response = self.os_client.indices.get_alias(request_timeout=self.timeout)
 
             metrics = indices_aliases_parser.parse_response(response, self.metric_name_list)
             metric_dict = group_metrics(metrics)
@@ -125,16 +125,16 @@ class IndicesAliasesCollector(object):
 
 
 class IndicesMappingsCollector(object):
-    def __init__(self, es_client, timeout):
-        self.metric_name_list = ['es', 'indices_mappings']
+    def __init__(self, os_client, timeout):
+        self.metric_name_list = ['os', 'indices_mappings']
         self.description = 'Indices Mappings'
 
-        self.es_client = es_client
+        self.os_client = os_client
         self.timeout = timeout
 
     def collect(self):
         try:
-            response = self.es_client.indices.get_mapping(request_timeout=self.timeout)
+            response = self.os_client.indices.get_mapping(request_timeout=self.timeout)
 
             metrics = indices_mappings_parser.parse_response(response, self.metric_name_list)
             metric_dict = group_metrics(metrics)
@@ -152,12 +152,12 @@ class IndicesMappingsCollector(object):
 
 
 class IndicesStatsCollector(object):
-    def __init__(self, es_client, timeout, parse_indices=False,
+    def __init__(self, os_client, timeout, parse_indices=False,
                  indices=None, metrics=None, fields=None):
-        self.metric_name_list = ['es', 'indices_stats']
+        self.metric_name_list = ['os', 'indices_stats']
         self.description = 'Indices Stats'
 
-        self.es_client = es_client
+        self.os_client = os_client
         self.timeout = timeout
         self.parse_indices = parse_indices
         self.indices = indices
@@ -166,7 +166,7 @@ class IndicesStatsCollector(object):
 
     def collect(self):
         try:
-            response = self.es_client.indices.stats(index=self.indices,
+            response = self.os_client.indices.stats(index=self.indices,
                                                     metric=self.metrics,
                                                     fields=self.fields,
                                                     request_timeout=self.timeout)
@@ -200,11 +200,11 @@ class QueryMetricCollector(object):
             yield from gauge_generator(metric_dict)
 
 
-def run_query(es_client, query_name, indices, query,
+def run_query(os_client, query_name, indices, query,
               timeout, on_error, on_missing):
 
     try:
-        response = es_client.search(index=indices, body=query, request_timeout=timeout)
+        response = os_client.search(index=indices, body=query, request_timeout=timeout)
 
         metrics = parse_response(response, [query_name])
         metric_dict = group_metrics(metrics)
@@ -404,7 +404,7 @@ CONFIGPARSER_CONVERTERS = {
 
 
 @click.command(context_settings=CONTEXT_SETTINGS)
-@click.option('--es-cluster', '-e', default='localhost',
+@click.option('--os-cluster', '-e', default='localhost',
               help='Addresses of nodes in a Elasticsearch cluster to run queries on. '
                    'Nodes should be separated by commas e.g. es1,es2. '
                    'Ports can be provided if non-standard (9200) e.g. es1:9999. '
@@ -497,7 +497,7 @@ CONFIGPARSER_CONVERTERS = {
                    'Metrics should be separated by commas e.g. indices,fs.')
 @click.option('--indices-stats-fields',
               callback=indices_stats_fields_parser,
-              help='Include fielddata info for specific fields. '
+              help='Include field data info for specific fields. '
                    'Fields should be separated by commas e.g. field1,field2. '
                    'Use \'*\' for all.')
 @click.option('--json-logging', '-j', default=False, is_flag=True,
@@ -509,7 +509,7 @@ CONFIGPARSER_CONVERTERS = {
               help='Turn on verbose (DEBUG) logging. Overrides --log-level.')
 @click_config_file.configuration_option()
 def cli(**options):
-    """Export Elasticsearch query results to Prometheus."""
+    """Export Opensearch query results to Prometheus."""
     if options['basic_user'] and options['basic_password'] is None:
         raise click.BadOptionUsage('basic_user', 'Username provided with no password.')
     elif options['basic_user'] is None and options['basic_password']:
@@ -556,14 +556,15 @@ def cli(**options):
 
     # Elasticsearch logs all requests at (at least) INFO level.
     # To reduce log spam, only allow WARNING or higher logs unless we're in verbose/DEBUG mode.
-    if logging.getLogger().getEffectiveLevel() >= logging.INFO:
-        logging.getLogger('elasticsearch').setLevel(logging.WARNING)
+    # below line is comment by me
+    # if logging.getLogger().getEffectiveLevel() >= logging.INFO:
+    #     logging.getLogger('elasticsearch').setLevel(logging.WARNING)
 
     port = options['port']
-    es_cluster = options['es_cluster'].split(',')
+    os_cluster = options['os_cluster'].split(',')
 
     if options['ca_certs']:
-        es_client = Elasticsearch(es_cluster,
+        os_client = OpenSearch(hosts=os_cluster,
                                   verify_certs=True,
                                   ca_certs=options['ca_certs'],
                                   client_cert=options['client_cert'],
@@ -571,8 +572,9 @@ def cli(**options):
                                   headers=options['header'],
                                   http_auth=http_auth)
     else:
-        es_client = Elasticsearch(es_cluster,
+        os_client = OpenSearch(hosts=os_cluster,
                                   verify_certs=False,
+                                  use_ssl=False,
                                   headers=options['header'],
                                   http_auth=http_auth)
 
@@ -612,33 +614,33 @@ def cli(**options):
             for query_name, (interval, timeout, indices, query,
                              on_error, on_missing) in queries.items():
                 schedule_job(scheduler, executor, interval,
-                             run_query, es_client, query_name, indices, query,
+                             run_query, os_client, query_name, indices, query,
                              timeout, on_error, on_missing)
         else:
             log.error('No queries found in config file(s)')
             return
 
     if not options['cluster_health_disable']:
-        REGISTRY.register(ClusterHealthCollector(es_client,
+        REGISTRY.register(ClusterHealthCollector(os_client,
                                                  options['cluster_health_timeout'],
                                                  options['cluster_health_level']))
 
     if not options['nodes_stats_disable']:
-        REGISTRY.register(NodesStatsCollector(es_client,
+        REGISTRY.register(NodesStatsCollector(os_client,
                                               options['nodes_stats_timeout'],
                                               metrics=options['nodes_stats_metrics']))
 
     if not options['indices_aliases_disable']:
-        REGISTRY.register(IndicesAliasesCollector(es_client,
+        REGISTRY.register(IndicesAliasesCollector(os_client,
                                                   options['indices_aliases_timeout']))
 
     if not options['indices_mappings_disable']:
-        REGISTRY.register(IndicesMappingsCollector(es_client,
+        REGISTRY.register(IndicesMappingsCollector(os_client,
                                                    options['indices_mappings_timeout']))
 
     if not options['indices_stats_disable']:
         parse_indices = options['indices_stats_mode'] == 'indices'
-        REGISTRY.register(IndicesStatsCollector(es_client,
+        REGISTRY.register(IndicesStatsCollector(os_client,
                                                 options['indices_stats_timeout'],
                                                 parse_indices=parse_indices,
                                                 indices=options['indices_stats_indices'],
@@ -662,4 +664,4 @@ def cli(**options):
 @log_exceptions(exit_on_exception=True)
 @nice_shutdown()
 def main():
-    cli(auto_envvar_prefix='ES_EXPORTER')
+    cli(auto_envvar_prefix='OS_EXPORTER')

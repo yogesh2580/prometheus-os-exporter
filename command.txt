@@ -1,0 +1,3 @@
+docker run   -d --rm --name exporter -p 9206:9206 prometheus_os_exporter -e https://localhost:9200 --cluster-health-disable --nodes-stats-disable --indices-stats-disable 
+
+-v "/monomon/elasticsearch/exporter.cfg:/usr/src/app/exporter.cfg" 
